@@ -37,7 +37,7 @@ FEATURES = ["alcohol", "malic_acid", "ash", "alcalinity_of_ash", "magnesium",
 X_train, X_test, y_train, y_test = train_test_split(
     df[FEATURES],
     df[TARGET],
-    test_size=0.1,
+    test_size=0.2,
     random_state=42
 )
 
@@ -62,6 +62,34 @@ def plot_confusion_matrix(conf_matrix):
     fig.update_layout(title='Confusion Matrix')
     return fig
 
+def set_new_params(model):
+    if isinstance(model, LogisticRegression):
+        new_c = float(st.session_state.get('C', model.C))
+        new_solver = st.session_state.get('solver', model.solver)
+        
+        new_model = LogisticRegression(
+            C=new_c,
+            solver=new_solver,
+            max_iter=1000
+        )
+        
+        models["Logistic Regression"] = new_model
+    
+    elif isinstance(model, tree.DecisionTreeClassifier):
+        pass
+
+
+@st.dialog(f"Gérer les paramètres du modèle")
+def open_modale(smn:str):
+    model = models[smn]
+    if isinstance(model, LogisticRegression):
+        st.text_input("C", value=model.C, key="C")
+        st.selectbox("Solver", 
+        ["lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"],
+            key="solver"
+        )
+        st.button("apply", on_click=lambda : set_new_params(model))
+
 
 def main():
     st.title("🍷 Entrainement des modèles de classification du vin")
@@ -78,6 +106,7 @@ def main():
         "Choisissez un modèle",
         list(models.keys())
     )
+    st.sidebar.button("Personnaliser", on_click=lambda : open_modale(selected_model_name))
     
     model = models[selected_model_name]
     model, y_pred, cv_scores, report, conf_matrix = train_and_evaluate_model(model)
