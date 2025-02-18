@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 st.set_page_config(layout="wide", page_title="Entrainement des modèles de classification du vin")
 
 # Load and prepare data
-df = pd.read_csv("/home/hijokaidan/PC/cours/ia/data/vin.csv")
+df = pd.read_csv("data/vin.csv")
 df['target_numeric'] = (
     df['target']
     .apply(
