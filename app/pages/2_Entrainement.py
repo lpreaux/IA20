@@ -1,16 +1,10 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import tree
 import plotly.express as px
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-# Set page config
-st.set_page_config(layout="wide", page_title="Entrainement des modèles de classification du vin")
 
 # Load and prepare data
 df = pd.read_csv("data/vin.csv")
@@ -138,5 +132,5 @@ def main():
     report_df = pd.DataFrame(report).round(3)
     st.dataframe(report_df.transpose())
 
-if __name__ == "__main__":
-    main()
+
+main()

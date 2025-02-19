@@ -1,5 +1,4 @@
 import streamlit as st
-import pandas as pd
 
 st.sidebar.markdown(""" # Accueil 🍷""")
 st.write("""

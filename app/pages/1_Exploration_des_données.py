@@ -8,7 +8,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
 
-df_raw = pd.read_csv('data/vin.csv', index_col=0)
+from ..utils.dataset import DatasetUtils
+
+# df_raw = pd.read_csv('data/vin.csv', index_col=0)
+dataset = DatasetUtils.load()
+df_raw = dataset.data
 
 df_raw = (
     df_raw
@@ -17,22 +21,8 @@ df_raw = (
     )
 )
 
-TARGET = "target_num"
-FEATURES = [
-    "alcohol",
-    "malic_acid",
-    "ash",
-    "alcalinity_of_ash",
-    "magnesium",
-    "total_phenols",
-    "flavanoids",
-    "nonflavanoid_phenols",
-    "proanthocyanins",
-    "color_intensity",
-    "hue",
-    "od280/od315_of_diluted_wines",
-    "proline"
-]
+TARGET = dataset.target_columns
+FEATURES = dataset.features_columns
 
 df_target_sizes = (
     df_raw
@@ -47,17 +37,6 @@ df_target_sizes = (
 # UI #
 ######
 
-st.markdown("""
-    <style>
-    .fullwidth {
-        padding-left: calc(-100vw / 2 + 100% / 2);
-        padding-right: calc(-100vw / 2 + 100% / 2);
-        margin-left: calc(100vw / 2 - 100% / 2);
-        margin-right: calc(100vw / 2 - 100% / 2);
-    }
-    </style>
-""", unsafe_allow_html=True)
-
 st.write("""
 # Analyse Exploratoire des Données - Dataset Vin
 """)
@@ -66,7 +45,7 @@ st.write("""
 ___
 ## 1. Premier aperçu des données
 
-Examinons dans un premier temps les caractéristiques générales de notre dataset :
+Examinons dans un premier temps les caractéristiques générales de notre dataset.py :
 - Structure des données (types de variables, valeurs manquantes)
 - Statistiques descriptives (moyenne, écart-type, quartiles, etc.)
 """)
@@ -87,7 +66,7 @@ ___
 ## 2. Analyse de la Target
 
 Maintenant, analysons la distribution de notre variable cible (target) pour évaluer l'équilibre des classes dans notre
-dataset. Un déséquilibre important pourrait nécessiter des techniques de rééchantillonnage.
+dataset.py. Un déséquilibre important pourrait nécessiter des techniques de rééchantillonnage.
 """)
 
 st.write("#### a. Distribution des classes")
