@@ -21,7 +21,10 @@ df['target_numeric'] = (
     )
 )
 
-# Define models
+def set_models(models):
+    new_c = float(st.session_state.get('C', model.C))
+    new_solver = st.session_state.get('solver', model.solver)
+
 models = {
     "Logistic Regression": LogisticRegression(max_iter=1000),
     "Decision Tree": tree.DecisionTreeClassifier()
@@ -38,7 +41,7 @@ X_train, X_test, y_train, y_test = train_test_split(
     df[FEATURES],
     df[TARGET],
     test_size=0.2,
-    random_state=42
+    random_state=51
 )
 
 def train_and_evaluate_model(model):
@@ -115,6 +118,7 @@ def main():
     
     with col1:
         st.subheader("Model Performance Metrics")
+    
         metrics_df = pd.DataFrame({
             'Metric': ['Accuracy', 'Precision (macro)', 'Recall (macro)', 'F1-score (macro)'],
             'Score': [
