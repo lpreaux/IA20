@@ -1,9 +1,19 @@
+from typing import Optional
+
 import streamlit as st
 from ..state import DatasetState
 from ..services import DataFrameService, FileTypeDetector
 from .state import FormState
 from .components.column_selector import ColumnSelector
 from .components.data_preview import DataPreview
+
+
+def dataset_form_button(label: Optional[str] = None):
+    if label is None:
+        dataset = DatasetState.get_dataset()
+        label = "Configure dataset" if not dataset else "Change dataset"
+    if st.button(label=label, icon=":material/data_table:"):
+        dataset_config_form()
 
 
 @st.dialog("Configuration du jeu de données", width='large')
