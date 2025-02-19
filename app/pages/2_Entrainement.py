@@ -7,7 +7,7 @@ from sklearn import tree
 import plotly.express as px
 
 # Load and prepare data
-df = pd.read_csv("data/vin.csv")
+df = pd.read_csv("../data/vin.csv")
 df['target_numeric'] = (
     df['target']
     .apply(
@@ -73,19 +73,33 @@ def set_new_params(model):
         models["Logistic Regression"] = new_model
     
     elif isinstance(model, tree.DecisionTreeClassifier):
-        pass
+        new_p_max = float(st.session_state.get('p_max', model.max_depth))
+        new_f_max = st.session_state.get('f_max', model.max_features)
+        
+        new_model = tree.DecisionTreeClassifier(
+            max_depth=new_p_max,
+            max_features=new_f_max,
+        )
+        
+        models["Logistic Regression"] = new_model
 
 
 @st.dialog(f"Gérer les paramètres du modèle")
 def open_modale(smn:str):
     model = models[smn]
+
     if isinstance(model, LogisticRegression):
         st.text_input("C", value=model.C, key="C")
         st.selectbox("Solver", 
         ["lbfgs", "liblinear", "newton-cg", "newton-cholesky", "sag", "saga"],
             key="solver"
         )
-        st.button("apply", on_click=lambda : set_new_params(model))
+        st.button("Changer", on_click=lambda : set_new_params(model))
+
+    elif isinstance(model, tree.DecisionTreeClassifier):
+        st.number_input("Profondeur Max", value=model.max_depth, key="p_max")
+        st.number_input("Max Features", value=model.max_features, key="f_max")
+        st.button("Changer", on_click=lambda : set_new_params(model))
 
 
 def main():
