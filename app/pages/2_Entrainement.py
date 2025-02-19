@@ -2,10 +2,12 @@ import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import tree
 import plotly.express as px
 import matplotlib.pyplot as plt
+import math
 
 # Load and prepare data
 df = pd.read_csv("../data/vin.csv")
@@ -20,7 +22,8 @@ def get_models():
     if not st.session_state.get("Models"):
         models = {
             "Logistic Regression": LogisticRegression(max_iter=1000),
-            "Decision Tree": tree.DecisionTreeClassifier()
+            "Decision Tree": tree.DecisionTreeClassifier(),
+            "Forest": RandomForestClassifier(),
         }
         st.session_state["Models"] = models
     else:
@@ -51,12 +54,37 @@ def plot_decision_tree(model, feature_names, class_names):
                    fontsize=10)
     return plt
 
+def plot_random_forest_trees(forest_model, feature_names, class_names, n_trees=4):
+    """Plot a sample of trees from the random forest"""
+    # Get a sample of trees from the forest
+    n_cols = 2
+    n_rows = math.ceil(n_trees / n_cols)
+    
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 10 * n_rows))
+    axes = axes.flatten()
+    
+    for i, ax in enumerate(axes):
+        if i < n_trees:
+            estimator = forest_model.estimators_[i]
+            tree.plot_tree(estimator,
+                          feature_names=feature_names,
+                          class_names=class_names,
+                          filled=True,
+                          rounded=True,
+                          ax=ax,
+                          fontsize=8)
+            ax.set_title(f"Tree {i+1} from Random Forest")
+        else:
+            ax.axis('off')
+    
+    plt.tight_layout()
+    return plt
 
 def plot_feature_importance(model, features):
     importance = 0
     if isinstance(model, LogisticRegression):
         importance = abs(model.coef_[0])
-    else:  # Decision Tree
+    else:  # Decision Tree or Random Forest
         importance = model.feature_importances_
     
     fig = px.bar(x=features, y=importance,
@@ -109,6 +137,17 @@ def set_new_params(model):
         )
         
         models["Decision Tree"] = new_model
+
+    elif isinstance(model, RandomForestClassifier):
+        new_n_trees = int(st.session_state.get('n_trees', model.n_estimators))
+        new_max_depth = int(st.session_state.get('rf_max_depth', model.max_depth))
+        
+        new_model = RandomForestClassifier(
+            n_estimators=new_n_trees,
+            max_depth=new_max_depth,
+        )
+        
+        models["Forest"] = new_model
     
     run_model(new_model)
 
@@ -129,6 +168,11 @@ def open_modale(smn:str):
     elif isinstance(model, tree.DecisionTreeClassifier):
         st.number_input("Profondeur Max", value=model.max_depth, key="p_max")
         st.number_input("Max Features", value=model.max_features, key="f_max")
+        st.button("Changer", on_click=lambda : set_new_params(model))
+
+    elif isinstance(model, RandomForestClassifier):
+        st.number_input("Nombre d'arbres", value=model.n_estimators, key="n_trees")
+        st.number_input("Profondeur Max", value=model.max_depth, key="rf_max_depth")
         st.button("Changer", on_click=lambda : set_new_params(model))
 
 def run_model(model):
@@ -163,6 +207,17 @@ def run_model(model):
         class_names = ['Amer', 'Équilibré', 'Sucré']
         fig = plot_decision_tree(model, FEATURES, class_names)
         st.pyplot(fig)
+    
+    elif isinstance(model, RandomForestClassifier):
+        st.subheader("Visualisation d'échantillon d'arbres de la forêt")
+        class_names = ['Amer', 'Équilibré', 'Sucré']
+        
+        # Add a slider to select how many trees to display
+        num_trees_to_show = st.slider("Nombre d'arbres à afficher", 1, 
+                                     min(6, model.n_estimators), 4)
+        
+        forest_fig = plot_random_forest_trees(model, FEATURES, class_names, num_trees_to_show)
+        st.pyplot(forest_fig)
     
     st.subheader("Feature Importance")
     feature_importance_fig = plot_feature_importance(model, FEATURES)

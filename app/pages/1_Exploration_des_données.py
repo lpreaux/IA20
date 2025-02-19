@@ -10,7 +10,7 @@ from scipy import stats
 
 # from app.utils.dataset import DatasetUtils
 
-df_raw = pd.read_csv('data/vin.csv', index_col=0)
+df_raw = pd.read_csv('../data/vin.csv', index_col=0)
 # dataset = DatasetUtils.load()
 # df_raw = dataset.data
 
