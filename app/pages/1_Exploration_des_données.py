@@ -8,11 +8,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
 
-from ..utils.dataset import DatasetUtils
+# from app.utils.dataset import DatasetUtils
 
-# df_raw = pd.read_csv('data/vin.csv', index_col=0)
-dataset = DatasetUtils.load()
-df_raw = dataset.data
+df_raw = pd.read_csv('data/vin.csv', index_col=0)
+# dataset = DatasetUtils.load()
+# df_raw = dataset.data
 
 df_raw = (
     df_raw
@@ -21,8 +21,24 @@ df_raw = (
     )
 )
 
-TARGET = dataset.target_columns
-FEATURES = dataset.features_columns
+# TARGET = dataset.target_columns
+# FEATURES = dataset.features_columns
+TARGET = "target_num"
+FEATURES = [
+    "alcohol",
+    "malic_acid",
+    "ash",
+    "alcalinity_of_ash",
+    "magnesium",
+    "total_phenols",
+    "flavanoids",
+    "nonflavanoid_phenols",
+    "proanthocyanins",
+    "color_intensity",
+    "hue",
+    "od280/od315_of_diluted_wines",
+    "proline"
+]
 
 df_target_sizes = (
     df_raw
