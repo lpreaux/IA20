@@ -52,6 +52,16 @@ def train_and_evaluate_model(model):
     
     return model, y_pred, cv_scores, report, conf_matrix
 
+def plot_decision_tree(model, feature_names, class_names):
+    plt.figure(figsize=(20, 10))
+    tree.plot_tree(model, 
+                   feature_names=feature_names,
+                   class_names=class_names,
+                   filled=True, 
+                   rounded=True, 
+                   fontsize=10)
+    return plt
+
 
 def plot_random_forest_trees(forest_model, feature_names, class_names, n_trees=4):
     """Plot a sample of trees from the random forest"""

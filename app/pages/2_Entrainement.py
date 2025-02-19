@@ -46,7 +46,7 @@ def set_new_params(model):
         
         models["Forest"] = new_model
     
-    run_model(new_model)
+    train.run_model(new_model)
 
 
 @st.dialog(f"Gérer les paramètres du modèle")
