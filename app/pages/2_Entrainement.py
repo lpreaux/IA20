@@ -16,14 +16,16 @@ df['target_numeric'] = (
     )
 )
 
-def set_models(models):
-    new_c = float(st.session_state.get('C', model.C))
-    new_solver = st.session_state.get('solver', model.solver)
-
-models = {
-    "Logistic Regression": LogisticRegression(max_iter=1000),
-    "Decision Tree": tree.DecisionTreeClassifier()
-}
+def get_models():
+    if not st.session_state.get("Models"):
+        models = {
+            "Logistic Regression": LogisticRegression(max_iter=1000),
+            "Decision Tree": tree.DecisionTreeClassifier()
+        }
+        st.session_state["Models"] = models
+    else:
+        models = st.session_state["Models"]
+    return models
 
 # Define features and target
 TARGET = "target_numeric"
@@ -84,6 +86,7 @@ def plot_confusion_matrix(conf_matrix):
     return fig
 
 def set_new_params(model):
+    models = get_models()
     if isinstance(model, LogisticRegression):
         new_c = float(st.session_state.get('C', model.C))
         new_solver = st.session_state.get('solver', model.solver)
@@ -97,19 +100,22 @@ def set_new_params(model):
         models["Logistic Regression"] = new_model
     
     elif isinstance(model, tree.DecisionTreeClassifier):
-        new_p_max = float(st.session_state.get('p_max', model.max_depth))
-        new_f_max = st.session_state.get('f_max', model.max_features)
+        new_p_max = int(st.session_state.get('p_max', model.max_depth))
+        new_f_max = int(st.session_state.get('f_max', model.max_features))
         
         new_model = tree.DecisionTreeClassifier(
             max_depth=new_p_max,
             max_features=new_f_max,
         )
         
-        models["Logistic Regression"] = new_model
+        models["Decision Tree"] = new_model
+    
+    run_model(new_model)
 
 
 @st.dialog(f"Gérer les paramètres du modèle")
 def open_modale(smn:str):
+    models = get_models()
     model = models[smn]
 
     if isinstance(model, LogisticRegression):
@@ -125,25 +131,7 @@ def open_modale(smn:str):
         st.number_input("Max Features", value=model.max_features, key="f_max")
         st.button("Changer", on_click=lambda : set_new_params(model))
 
-
-def main():
-    st.title("🍷 Entrainement des modèles de classification du vin")
-    
-    st.markdown("""
-    Cette page a pour but de vous permettre de choisir un modèle pour l'entrainer à prédire le type du vin en fonction de ses caractéristiques.
-
-    Vous pouvez choisir différents modèles dans la barre de sélection à gauche
-    """)
-    
-    # Sidebar
-    st.sidebar.header("Sélection des modèles")
-    selected_model_name = st.sidebar.selectbox(
-        "Choisissez un modèle",
-        list(models.keys())
-    )
-    st.sidebar.button("Personnaliser", on_click=lambda : open_modale(selected_model_name))
-    
-    model = models[selected_model_name]
+def run_model(model):
     model, y_pred, cv_scores, report, conf_matrix = train_and_evaluate_model(model)
     
     col1, col2 = st.columns(2)
@@ -183,6 +171,28 @@ def main():
     st.subheader("Détails des performances du modèle")
     report_df = pd.DataFrame(report).round(3)
     st.dataframe(report_df.transpose())
+
+
+def main():
+    models = get_models()
+    st.title("🍷 Entrainement des modèles de classification du vin")
+    
+    st.markdown("""
+    Cette page a pour but de vous permettre de choisir un modèle pour l'entrainer à prédire le type du vin en fonction de ses caractéristiques.
+
+    Vous pouvez choisir différents modèles dans la barre de sélection à gauche
+    """)
+    
+    # Sidebar
+    st.sidebar.header("Sélection des modèles")
+    selected_model_name = st.sidebar.selectbox(
+        "Choisissez un modèle",
+        list(models.keys())
+    )
+    st.sidebar.button("Personnaliser", on_click=lambda : open_modale(selected_model_name))
+    
+    model = models[selected_model_name]
+    run_model(model)
 
 
 main()
