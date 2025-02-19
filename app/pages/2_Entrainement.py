@@ -5,6 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import tree
 import plotly.express as px
+import matplotlib.pyplot as plt
 
 # Load and prepare data
 df = pd.read_csv("../data/vin.csv")
@@ -37,6 +38,29 @@ X_train, X_test, y_train, y_test = train_test_split(
     test_size=0.2,
     random_state=51
 )
+
+def plot_decision_tree(model, feature_names, class_names):
+    plt.figure(figsize=(20, 10))
+    tree.plot_tree(model, 
+                   feature_names=feature_names,
+                   class_names=class_names,
+                   filled=True, 
+                   rounded=True, 
+                   fontsize=10)
+    return plt
+
+
+def plot_feature_importance(model, features):
+    importance = 0
+    if isinstance(model, LogisticRegression):
+        importance = abs(model.coef_[0])
+    else:  # Decision Tree
+        importance = model.feature_importances_
+    
+    fig = px.bar(x=features, y=importance,
+                 labels={'x': 'Features', 'y': 'Importance'},
+                 title='Feature Importance')
+    return fig
 
 def train_and_evaluate_model(model):
     model.fit(X_train, y_train)
@@ -145,6 +169,16 @@ def main():
         st.subheader("Matrice de confusion")
         conf_matrix_fig = plot_confusion_matrix(conf_matrix)
         st.plotly_chart(conf_matrix_fig, use_container_width=True)
+
+    if isinstance(model, tree.DecisionTreeClassifier):
+        st.subheader("Visualisation de l'arbre de décision")
+        class_names = ['Amer', 'Équilibré', 'Sucré']
+        fig = plot_decision_tree(model, FEATURES, class_names)
+        st.pyplot(fig)
+    
+    st.subheader("Feature Importance")
+    feature_importance_fig = plot_feature_importance(model, FEATURES)
+    st.plotly_chart(feature_importance_fig, use_container_width=True)
     
     st.subheader("Détails des performances du modèle")
     report_df = pd.DataFrame(report).round(3)
