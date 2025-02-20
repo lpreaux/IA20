@@ -6,7 +6,6 @@ import utils.training as train
 def main():
     models = train.get_models()
     
-    # Replace selectbox with tabs
     tab1, tab2, tab3 = st.tabs(["Matrice de confusion", "Rapport CV", "Performances"])
     
     # Confusion Matrix Tab

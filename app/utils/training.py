@@ -134,7 +134,7 @@ def plot_random_forest_trees(forest_model, feature_names, class_names, n_trees=4
         else:
             ax.axis('off')
     
-    plt.tight_layout(pad=3.0, rect=[0, 0, 1, 0.97])  # Leave room for suptitle
+    plt.tight_layout(pad=3.0, rect=[0, 0, 1, 0.97])
     return plt
 
 
@@ -142,7 +142,7 @@ def plot_feature_importance(model, features):
     importance = 0
     if isinstance(model, LogisticRegression):
         importance = abs(model.coef_[0])
-    else:  # Decision Tree or Random Forest
+    else:
         importance = model.feature_importances_
     
     feature_importance_df = pd.DataFrame({
@@ -152,7 +152,6 @@ def plot_feature_importance(model, features):
     
     feature_importance_df = feature_importance_df.sort_values('Importance', ascending=False)
     
-    # Create a horizontal bar chart for better readability
     fig = px.bar(feature_importance_df, 
                  y='Feature', 
                  x='Importance',
@@ -164,18 +163,16 @@ def plot_feature_importance(model, features):
                  height=max(400, len(features) * 30)  # Dynamic height based on feature count
                 )
     
-    # Add value labels at the end of each bar
     fig.update_traces(texttemplate='%{x:.3f}', textposition='outside')
     
-    # Enhanced layout
     fig.update_layout(
         title={
             'text': 'Feature Importance',
             'font': {'size': 20, 'family': 'Arial'},
             'y': 0.98
         },
-        yaxis={'categoryorder': 'total ascending'},  # Sort bars by value
-        margin=dict(l=20, r=120, t=60, b=40),  # Extra right margin for labels
+        yaxis={'categoryorder': 'total ascending'},
+        margin=dict(l=20, r=120, t=60, b=40),
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(showgrid=True, gridwidth=1, gridcolor='#EEEEEE')
@@ -188,15 +185,13 @@ def plot_confusion_matrix(conf_matrix):
     target_col = conf.target_columns[0]
     vals = conf.data[target_col].unique()
     
-    # Use grayscale color scheme instead of RdBu
     fig = px.imshow(conf_matrix,
                     labels=dict(x="Predicted", y="Actual"),
                     x=vals,
                     y=vals,
                     color_continuous_scale='gray',
-                    text_auto=True)  # Display numbers on cells
+                    text_auto=True)
     
-    # Customize text appearance for better readability
     fig.update_traces(texttemplate="%{z}", textfont={"size": 14})
     
     fig.update_layout(title='Confusion Matrix')
@@ -205,36 +200,29 @@ def plot_confusion_matrix(conf_matrix):
 def draw_cv(report, cv_scores):
     st.subheader("Cross-validation Results")
     
-    # More detailed CV reporting
     cv_df = pd.DataFrame({
         'Fold': range(1, len(cv_scores) + 1),
         'CV Score': cv_scores
     })
     
-    # Display statistics with improved formatting
     mean_score = cv_scores.mean()
     std_score = cv_scores.std() * 2
     st.markdown(f"<h4>Mean CV Score: <span style='color:#1E88E5'>{mean_score:.3f}</span> (±{std_score:.3f})</h4>", unsafe_allow_html=True)
     
-    # Visualize CV distribution with enhanced styling
     fig, ax = plt.subplots(figsize=(10, 5))
     
-    # Custom color palette
-    bar_color = '#1E88E5'  # Vibrant blue
-    mean_line_color = '#E53935'  # Complementary red
-    std_area_color = '#FFE0E0'  # Light red for std dev area
+    bar_color = '#1E88E5'
+    mean_line_color = '#E53935'
+    std_area_color = '#FFE0E0'
     
-    # Plot bars with improved style
     bars = sns.barplot(data=cv_df, x='Fold', y='CV Score', ax=ax, color=bar_color)
     
-    # Add value labels on top of bars
     for i, bar in enumerate(bars.patches):
         ax.text(bar.get_x() + bar.get_width()/2, 
                 bar.get_height() + 0.005, 
                 f'{cv_scores[i]:.3f}', 
                 ha='center', fontsize=10, color='#333333')
     
-    # Enhanced mean line and std dev area
     ax.axhline(y=mean_score, color=mean_line_color, linestyle='-', 
                linewidth=2, label=f'Mean: {mean_score:.3f}')
     ax.fill_between(x=range(-1, len(cv_scores) + 1), 
@@ -243,17 +231,14 @@ def draw_cv(report, cv_scores):
                 alpha=0.3, color=std_area_color, 
                 label=f'Std Dev: {cv_scores.std():.3f}')
     
-    # Improved axis styling
     ax.set_ylim([max(0, cv_scores.min() - 0.1), min(1, cv_scores.max() + 0.1)])
     ax.grid(axis='y', linestyle='--', alpha=0.7)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     
-    # Enhanced legend and title
     ax.legend(frameon=True, facecolor='white', framealpha=0.9, fontsize=10)
     ax.set_title("Cross-validation Scores by Fold", fontsize=16, pad=15)
     
-    # Adjust labels
     ax.set_xlabel("Fold Number", fontsize=12)
     ax.set_ylabel("CV Score", fontsize=12)
     
@@ -303,7 +288,6 @@ def draw_perf(report, key=None):
     else:
         st.plotly_chart(fig, use_container_width=True)
 
-    # Also show the dataframe with nicely formatted metrics
     st.dataframe(metrics_df.style.format({'Score': '{:.3f}'})
                 .background_gradient(cmap='Blues', subset=['Score']), 
                 hide_index=True)
@@ -338,7 +322,6 @@ def run_model(model):
         target_col = conf.target_columns[0]
         vals = conf.data[target_col].unique()
         
-        # Add a slider to select how many trees to display
         num_trees_to_show = st.slider("Nombre d'arbres à afficher", 1, 
                                      min(6, model.n_estimators), 4)
         
