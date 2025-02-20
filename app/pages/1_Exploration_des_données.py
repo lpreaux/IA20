@@ -6,15 +6,65 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
+from sklearn.preprocessing import StandardScaler, PowerTransformer
 
 from dataset.state import DatasetState
 from dataset.forms.config import dataset_config_form
+from utils.plotly import get_color_palette
+
+
+def normalize_data(df, features, method):
+    """Applique la normalisation sélectionnée aux features."""
+    df_normalized = df.copy()
+
+    if method == "Standard Scaler":
+        scaler = StandardScaler()
+        df_normalized[features] = scaler.fit_transform(df[features])
+    elif method == "Power Transformer":
+        transformer = PowerTransformer(method='yeo-johnson')
+        df_normalized[features] = transformer.fit_transform(df[features])
+
+    return df_normalized
+
+
+def render_sidebar_content():
+    """Rendu du contenu spécifique de la sidebar pour l'exploration."""
+    st.sidebar.markdown("### 🔧 Options d'analyse")
+
+    # Normalisation des données
+    st.sidebar.markdown("#### Normalisation")
+    normalization = st.sidebar.selectbox(
+        "Méthode de normalisation",
+        options=["Aucune", "Standard Scaler", "Power Transformer"],
+        help="""
+        - Standard Scaler : Normalisation centrée réduite (moyenne=0, écart-type=1)
+        - Power Transformer : Transformation pour se rapprocher d'une distribution normale
+        """
+    )
+
+    if normalization != "Aucune":
+        st.sidebar.caption("""
+        ℹ️ La normalisation est appliquée uniquement aux visualisations.
+        Les données originales ne sont pas modifiées.
+        """)
+
+    return {
+        "normalization": normalization
+    }
 
 
 def create_distribution_plot(data, features, target=None):
     """Crée un plot de distribution pour chaque feature."""
     n_cols = 3
     n_rows = math.ceil(len(features) / n_cols)
+
+    # Création de la palette de couleurs si target est spécifié
+    colors = None
+    if target is not None:
+        unique_classes = data[target].unique()
+        colors = get_color_palette(len(unique_classes))
+        # Création du dictionnaire de correspondance classe -> couleur
+        color_map = dict(zip(unique_classes, colors))
 
     fig = make_subplots(
         rows=n_rows,
@@ -30,7 +80,7 @@ def create_distribution_plot(data, features, target=None):
 
         if target is not None:
             # Distribution par classe
-            for target_class in data[target].unique():
+            for idx, target_class in enumerate(data[target].unique()):
                 subset = data[data[target] == target_class][col]
                 try:
                     kde = stats.gaussian_kde(subset)
@@ -41,7 +91,10 @@ def create_distribution_plot(data, features, target=None):
                             y=kde(x_range),
                             name=f"{target_class}",
                             showlegend=(i == 0),
-                            line=dict(width=2)
+                            line=dict(
+                                width=2,
+                                color=color_map[target_class]
+                            )
                         ),
                         row=row,
                         col=col_pos
@@ -78,6 +131,94 @@ def create_distribution_plot(data, features, target=None):
             bordercolor='rgba(255,255,255,0.2)',
             borderwidth=1
         )
+    )
+
+    return fig
+
+
+def create_boxplot(data, features, target=None):
+    """Crée un boxplot pour les features sélectionnées, avec option de groupement par target.
+
+    Parameters:
+    -----------
+    data : pandas.DataFrame
+        Le DataFrame contenant les données
+    features : list
+        Liste des colonnes à visualiser
+    target : str, optional
+        Nom de la colonne target pour le groupement
+
+    Returns:
+    --------
+    plotly.graph_objects.Figure
+        La figure du boxplot
+    """
+    fig = go.Figure()
+
+    if target:
+        # Création des boxplots groupés par target
+        for feature in features:
+            for target_value in data[target].unique():
+                feature_data = data[data[target] == target_value][feature]
+                fig.add_trace(go.Box(
+                    y=feature_data,
+                    name=str(target_value),
+                    legendgroup=feature,
+                    legendgrouptitle_text=feature,
+                    boxpoints='outliers',
+                    pointpos=0,  # Centre les outliers
+                    jitter=0  # Désactive le jitter pour un alignement parfait
+                ))
+
+        fig.update_layout(
+            boxmode='group',
+            title_text="Distribution par classe et par variable",
+            yaxis_title="Valeur",
+            xaxis_title="Classe",
+            height=max(400, 100 * len(features)),
+            showlegend=True,
+            legend=dict(
+                groupclick="toggleitem",
+                bgcolor='rgba(0,0,0,0.5)',
+                bordercolor='rgba(255,255,255,0.2)',
+                borderwidth=1
+            )
+        )
+    else:
+        # Création des boxplots simples
+        for feature in features:
+            fig.add_trace(go.Box(
+                y=data[feature],
+                name=feature,
+                boxpoints='outliers',
+                jitter=0,
+                pointpos=0
+            ))
+
+        fig.update_layout(
+            title_text="Distribution des variables",
+            yaxis_title="Valeur",
+            xaxis_title="Variable",
+            showlegend=False,
+            height=600
+        )
+
+    # Configuration commune
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0.05)',
+    )
+
+    # Amélioration des tooltips
+    fig.update_traces(
+        hovertemplate="<b>%{y}</b><br>" +
+                      "Maximum: %{upperbound}<br>" +
+                      "Q3: %{q3}<br>" +
+                      "Médiane: %{median}<br>" +
+                      "Q1: %{q1}<br>" +
+                      "Minimum: %{lowerbound}<br>" +
+                      "<extra></extra>"
     )
 
     return fig
@@ -125,6 +266,17 @@ def page():
     dataset = DatasetState.get_dataset()
     df = dataset.data
 
+    # Configuration de la sidebar
+    sidebar_options = render_sidebar_content()
+
+    # Application de la normalisation si sélectionnée
+    if sidebar_options["normalization"] != "Aucune":
+        df = normalize_data(
+            df,
+            dataset.features_columns,
+            sidebar_options["normalization"]
+        )
+
     # En-tête
     st.markdown("""
         # 📊 Analyse Exploratoire des Données
@@ -162,9 +314,10 @@ def page():
             )
 
     # Onglets principaux
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📋 Vue d'ensemble",
         "📊 Distributions",
+        "📦 Boxplots",
         "🔗 Corrélations",
         "🎯 Pairplot"
     ])
@@ -219,6 +372,59 @@ def page():
                 st.plotly_chart(fig_dist_target, use_container_width=True)
 
     with tab3:
+        st.markdown("### 📦 Analyse de la dispersion")
+
+        # Message d'aide sur la normalisation
+        if sidebar_options["normalization"] == "Aucune":
+            st.info("""
+            💡 **Conseil de visualisation**: Si certaines variables ont des échelles très différentes, 
+            utiliser une méthode de normalisation dans la barre latérale peut améliorer la lisibilité 
+            des boxplots et faciliter la détection des outliers.
+            """)
+
+        # Sélection des features pour les boxplots
+        box_features = st.multiselect(
+            "Sélectionner les variables à analyser",
+            options=dataset.features_columns,
+            default=dataset.features_columns[:6],
+            key="boxplot_features"
+        )
+
+        if len(box_features) > 0:
+            # Option pour grouper par target si disponible
+            group_by_target = False
+            target = None
+            if len(dataset.target_columns) > 0:
+                group_by_target = st.checkbox(
+                    "Grouper par la variable cible",
+                    help="Affiche les boxplots séparés pour chaque classe de la variable cible"
+                )
+                if group_by_target:
+                    target = dataset.target_columns[0]
+
+            # Création et affichage du boxplot
+            fig = create_boxplot(df, box_features, target)
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Statistiques détaillées
+            if st.checkbox("Afficher les statistiques détaillées"):
+                stats_df = df[box_features].describe()
+                # Ajout des statistiques supplémentaires
+                skew = df[box_features].skew()
+                kurtosis = df[box_features].kurtosis()
+                stats_df.loc['skewness'] = skew
+                stats_df.loc['kurtosis'] = kurtosis
+                st.dataframe(
+                    stats_df.style.format("{:.2f}").background_gradient(
+                        cmap='RdYlBu',
+                        subset=pd.IndexSlice[['mean', 'std', 'skewness', 'kurtosis'], :]
+                    ),
+                    use_container_width=True
+                )
+        else:
+            st.info("Sélectionnez au moins une variable pour voir sa distribution")
+
+    with tab4:
         if len(dataset.features_columns) > 1:
             st.markdown("### 🔗 Analyse des corrélations")
 
@@ -237,7 +443,7 @@ def page():
         else:
             st.info("Il faut au moins 2 variables pour analyser les corrélations")
 
-    with tab4:
+    with tab5:
         st.markdown("### 🎯 Scatter Matrix")
 
         # Sélection des features pour le pairplot
@@ -286,6 +492,14 @@ def page():
 
 def render_no_dataset_skeleton():
     """Affiche un squelette visuel de la page quand aucun dataset n'est chargé."""
+    # Sidebar placeholder
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔧 Options d'analyse")
+    st.sidebar.selectbox(
+        "Méthode de normalisation",
+        options=["Aucune", "Standard Scaler", "Power Transformer"],
+        disabled=True
+    )
     # En-tête
     st.markdown("# 📊 Analyse Exploratoire des Données")
     st.markdown("""
@@ -318,9 +532,10 @@ def render_no_dataset_skeleton():
         st.metric("Classes", "---")
 
     # Onglets placeholder
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📋 Vue d'ensemble",
         "📊 Distributions",
+        "📦 Boxplots",
         "🔗 Corrélations",
         "🎯 Pairplot"
     ])
