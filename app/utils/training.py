@@ -6,26 +6,28 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import tree
 import plotly.express as px
+import dataset.state as state 
 import matplotlib.pyplot as plt
 import math
 
 def get_data_frame():
-    df = pd.read_csv("../data/vin.csv") 
-    df['target_numeric'] = (
-        df['target']
-        .apply(
-            lambda x: 0 if x == "Vin amer" else 1 if x == "Vin éuilibré" else 2
+    config = state.DatasetState.get_dataset()
+    df = config.data
+    target = config.target_columns
+    df = (
+        df 
+        .assign(
+            target_num=lambda x: pd.Categorical(x[target[0]]).codes
         )
     )
     return df
 
 def get_target():
-    return "target_numeric"
+    return "target_num"
 
 def get_features():
-    return ["alcohol", "malic_acid", "ash", "alcalinity_of_ash", "magnesium", 
-                "total_phenols", "flavanoids", "nonflavanoid_phenols", "proanthocyanins", 
-                "color_intensity", "hue", "od280/od315_of_diluted_wines", "proline"]
+    config = state.DatasetState.get_dataset()
+    return config.features_columns
 
 def train_and_evaluate_model(model):
 
@@ -140,10 +142,13 @@ def plot_feature_importance(model, features):
     return fig
 
 def plot_confusion_matrix(conf_matrix):
+    conf = state.DatasetState.get_dataset()
+    target_col = conf.target_columns[0]
+    vals = conf.data[target_col].unique()
     fig = px.imshow(conf_matrix,
                     labels=dict(x="Predicted", y="Actual"),
-                    x=['Amer', 'Équilibré', 'Sucré'],
-                    y=['Amer', 'Équilibré', 'Sucré'],
+                    x=vals,
+                    y=vals,
                     color_continuous_scale='RdBu')
     fig.update_layout(title='Confusion Matrix')
     return fig
