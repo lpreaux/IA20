@@ -5,6 +5,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import tree
+import seaborn as sns
 import plotly.express as px
 import dataset.state as state 
 import matplotlib.pyplot as plt
@@ -136,23 +137,41 @@ def plot_feature_importance(model, features):
     else:  # Decision Tree or Random Forest
         importance = model.feature_importances_
     
-    fig = px.bar(x=features, y=importance,
+    feature_importance_df = pd.DataFrame({
+        'Feature': features,
+        'Importance': importance
+    })
+    
+    feature_importance_df = feature_importance_df.sort_values('Importance', ascending=False)
+    
+    fig = px.bar(feature_importance_df, 
+                 x='Feature', 
+                 y='Importance',
                  labels={'x': 'Features', 'y': 'Importance'},
-                 title='Feature Importance')
+                 title='Feature Importance (Sorted)',
+                )
+    
+    fig.update_layout(xaxis_tickangle=-45)
     return fig
 
 def plot_confusion_matrix(conf_matrix):
     conf = state.DatasetState.get_dataset()
     target_col = conf.target_columns[0]
     vals = conf.data[target_col].unique()
+    
+    # Use grayscale color scheme instead of RdBu
     fig = px.imshow(conf_matrix,
                     labels=dict(x="Predicted", y="Actual"),
                     x=vals,
                     y=vals,
-                    color_continuous_scale='RdBu')
+                    color_continuous_scale='gray',
+                    text_auto=True)  # Display numbers on cells
+    
+    # Customize text appearance for better readability
+    fig.update_traces(texttemplate="%{z}", textfont={"size": 14})
+    
     fig.update_layout(title='Confusion Matrix')
     return fig
-
 
 def run_model(model):
     FEATURES = get_features()
@@ -162,7 +181,7 @@ def run_model(model):
     
     with col1:
         st.subheader("Model Performance Metrics")
-    
+
         metrics_df = pd.DataFrame({
             'Metric': ['Accuracy', 'Precision (macro)', 'Recall (macro)', 'F1-score (macro)'],
             'Score': [
@@ -175,7 +194,29 @@ def run_model(model):
         st.dataframe(metrics_df.round(3))
         
         st.subheader("Cross-validation Results")
+        
+        # More detailed CV reporting
+        cv_df = pd.DataFrame({
+            'Fold': range(1, len(cv_scores) + 1),
+            'CV Score': cv_scores
+        })
+        
+        # Display statistics
         st.write(f"Mean CV Score: {cv_scores.mean():.3f} (±{cv_scores.std()*2:.3f})")
+        
+        # Visualize CV distribution
+        fig, ax = plt.subplots(figsize=(8, 4))
+        sns.barplot(data=cv_df, x='Fold', y='CV Score', ax=ax, color='skyblue')
+        ax.axhline(y=cv_scores.mean(), color='red', linestyle='--', label=f'Mean: {cv_scores.mean():.3f}')
+        ax.fill_between(x=range(-1, len(cv_scores) + 1), 
+                    y1=cv_scores.mean() - cv_scores.std(),
+                    y2=cv_scores.mean() + cv_scores.std(),
+                    alpha=0.2, color='red', 
+                    label=f'Std Dev: {cv_scores.std():.3f}')
+        ax.set_ylim([max(0, cv_scores.min() - 0.1), min(1, cv_scores.max() + 0.1)])
+        ax.legend()
+        ax.set_title("Cross-validation Scores by Fold")
+        st.pyplot(fig)
         
     with col2:
         st.subheader("Matrice de confusion")
@@ -199,10 +240,10 @@ def run_model(model):
         forest_fig = plot_random_forest_trees(model, FEATURES, class_names, num_trees_to_show)
         st.pyplot(forest_fig)
     
-    st.subheader("Feature Importance")
-    feature_importance_fig = plot_feature_importance(model, FEATURES)
-    st.plotly_chart(feature_importance_fig, use_container_width=True)
-    
     st.subheader("Détails des performances du modèle")
     report_df = pd.DataFrame(report).round(3)
     st.dataframe(report_df.transpose())
+
+    st.subheader("Feature Importance")
+    feature_importance_fig = plot_feature_importance(model, FEATURES)
+    st.plotly_chart(feature_importance_fig, use_container_width=True)

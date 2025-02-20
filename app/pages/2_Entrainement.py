@@ -94,5 +94,31 @@ def main():
     model = models[selected_model_name]
     train.run_model(model)
 
+from dataset.state import DatasetState
 
-main()
+from dataset.forms.config import dataset_config_form
+
+dataset = DatasetState.get_dataset()
+
+def render_no_dataset_skeleton():
+    """Affiche un squelette de la page quand aucun dataset n'est chargé."""
+    with st.container():
+        # En-tête
+        st.markdown("# Entraînement")
+
+        # Skeleton pour le message d'erreur
+        with st.container(border=True):
+            # Utilisation des colonnes pour centrer le contenu
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.markdown("### :ghost: Aucun jeu de données")
+                st.caption("Chargez un jeu de données pour entrainer votre IA")
+                st.button("📤 Charger un jeu de données",
+                          type="primary",
+                          on_click=dataset_config_form,
+                          use_container_width=True)
+
+if not dataset:
+    render_no_dataset_skeleton()
+else:
+    main()
