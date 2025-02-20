@@ -15,7 +15,7 @@ def main():
         for key, model in models.items():
             model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
             with cols[i%3]:
-                st.subheader(f"Matrice de confusion pour les valeurs par défaut de {key}")
+                st.subheader(f"Matrice de confusion pour les valeurs de {key}")
                 conf_matrix_fig = train.plot_confusion_matrix(conf_matrix)
                 st.plotly_chart(conf_matrix_fig, use_container_width=True, key=f"confusion_matrix_{key}")
             i += 1

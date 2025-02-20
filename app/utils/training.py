@@ -257,36 +257,6 @@ def draw_perf(report, key=None):
             report['macro avg']['f1-score']
         ]
     })
-    
-    # Create a horizontal bar chart for metrics visualization
-    fig = px.bar(metrics_df, y='Metric', x='Score', orientation='h',
-                color='Score', color_continuous_scale='Viridis',
-                range_x=[0, 1])
-    
-    # Add value labels at the end of each bar
-    fig.update_traces(texttemplate='%{x:.3f}', textposition='outside')
-    
-    # Enhance layout
-    fig.update_layout(
-        title={
-            'text': 'Performance Metrics',
-            'font': {'size': 20, 'family': 'Arial'},
-            'y': 0.95
-        },
-        xaxis_title='Score',
-        yaxis_title=None,
-        xaxis=dict(tickfont=dict(size=12), showgrid=True, gridwidth=1, gridcolor='#EEEEEE'),
-        yaxis=dict(tickfont=dict(size=12)),
-        margin=dict(l=20, r=40, t=60, b=40),
-        height=300,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-    )
-    
-    if key:
-        st.plotly_chart(fig, use_container_width=True, key=key)
-    else:
-        st.plotly_chart(fig, use_container_width=True)
 
     st.dataframe(metrics_df.style.format({'Score': '{:.3f}'})
                 .background_gradient(cmap='Blues', subset=['Score']), 
