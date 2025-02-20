@@ -8,41 +8,24 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
 
-# from app.utils.dataset import DatasetUtils
+from dataset.state import DatasetState
 
-df_raw = pd.read_csv('../data/vin.csv', index_col=0)
-# dataset = DatasetUtils.load()
-# df_raw = dataset.data
+dataset = DatasetState.get_dataset()
+df_raw = dataset.data
+
+TARGET = dataset.target_columns[0]
+FEATURES = dataset.features_columns
 
 df_raw = (
     df_raw
     .assign(
-        target_num=lambda x: pd.Categorical(x['target']).codes
+        target_num=lambda x: pd.Categorical(x[TARGET]).codes
     )
 )
 
-# TARGET = dataset.target_columns
-# FEATURES = dataset.features_columns
-TARGET = "target_num"
-FEATURES = [
-    "alcohol",
-    "malic_acid",
-    "ash",
-    "alcalinity_of_ash",
-    "magnesium",
-    "total_phenols",
-    "flavanoids",
-    "nonflavanoid_phenols",
-    "proanthocyanins",
-    "color_intensity",
-    "hue",
-    "od280/od315_of_diluted_wines",
-    "proline"
-]
-
 df_target_sizes = (
     df_raw
-    .groupby('target')
+    .groupby(TARGET)
     .size()
     .rename('count')
 )
@@ -188,7 +171,7 @@ fig = make_subplots(
 )
 
 # Génération d'une palette de couleurs en fonction du nombre de classes
-unique_targets = sorted(df_raw['target'].unique())
+unique_targets = sorted(df_raw[TARGET].unique())
 n_classes = len(unique_targets)
 
 # Création d'une palette de couleurs
@@ -209,7 +192,7 @@ for i, col in enumerate(FEATURES):
     # Pour chaque classe
     for idx, target_class in enumerate(unique_targets):
         # Filtrer les données pour la classe actuelle
-        data = df_raw[df_raw['target'] == target_class][col]
+        data = df_raw[df_raw[TARGET] == target_class][col]
 
         try:
             # Calcul du KDE
