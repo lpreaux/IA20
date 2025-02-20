@@ -105,13 +105,16 @@ def get_models():
     return models
 
 def plot_random_forest_trees(forest_model, feature_names, class_names, n_trees=4):
-    """Plot a sample of trees from the random forest"""
-    # Get a sample of trees from the forest
+    """Plot a sample of trees from the random forest with enhanced styling"""
     n_cols = 2
     n_rows = math.ceil(n_trees / n_cols)
     
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 10 * n_rows))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(20, 10 * n_rows), facecolor='white')
+    fig.suptitle('Sample Trees from Random Forest', fontsize=22, y=0.98)
+    
     axes = axes.flatten()
+    
+    cmap = plt.cm.Blues
     
     for i, ax in enumerate(axes):
         if i < n_trees:
@@ -122,13 +125,18 @@ def plot_random_forest_trees(forest_model, feature_names, class_names, n_trees=4
                           filled=True,
                           rounded=True,
                           ax=ax,
-                          fontsize=8)
-            ax.set_title(f"Tree {i+1} from Random Forest")
+                          fontsize=8,
+                          proportion=True,  # Show proportions
+                          precision=2)      # Decimal precision
+            
+            ax.set_title(f"Tree {i+1} from Random Forest", fontsize=14, pad=12)
+            ax.grid(axis='both', linestyle='--', alpha=0.3)
         else:
             ax.axis('off')
     
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0, rect=[0, 0, 1, 0.97])  # Leave room for suptitle
     return plt
+
 
 def plot_feature_importance(model, features):
     importance = 0
@@ -144,14 +152,35 @@ def plot_feature_importance(model, features):
     
     feature_importance_df = feature_importance_df.sort_values('Importance', ascending=False)
     
+    # Create a horizontal bar chart for better readability
     fig = px.bar(feature_importance_df, 
-                 x='Feature', 
-                 y='Importance',
-                 labels={'x': 'Features', 'y': 'Importance'},
-                 title='Feature Importance (Sorted)',
+                 y='Feature', 
+                 x='Importance',
+                 orientation='h',
+                 color='Importance',
+                 color_continuous_scale='Viridis',
+                 labels={'x': 'Importance', 'y': 'Features'},
+                 title='Feature Importance',
+                 height=max(400, len(features) * 30)  # Dynamic height based on feature count
                 )
     
-    fig.update_layout(xaxis_tickangle=-45)
+    # Add value labels at the end of each bar
+    fig.update_traces(texttemplate='%{x:.3f}', textposition='outside')
+    
+    # Enhanced layout
+    fig.update_layout(
+        title={
+            'text': 'Feature Importance',
+            'font': {'size': 20, 'family': 'Arial'},
+            'y': 0.98
+        },
+        yaxis={'categoryorder': 'total ascending'},  # Sort bars by value
+        margin=dict(l=20, r=120, t=60, b=40),  # Extra right margin for labels
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        xaxis=dict(showgrid=True, gridwidth=1, gridcolor='#EEEEEE')
+    )
+    
     return fig
 
 def plot_confusion_matrix(conf_matrix):
@@ -174,33 +203,64 @@ def plot_confusion_matrix(conf_matrix):
     return fig
 
 def draw_cv(report, cv_scores):
-        
-        st.subheader("Cross-validation Results")
-        
-        # More detailed CV reporting
-        cv_df = pd.DataFrame({
-            'Fold': range(1, len(cv_scores) + 1),
-            'CV Score': cv_scores
-        })
-        
-        # Display statistics
-        st.write(f"Mean CV Score: {cv_scores.mean():.3f} (±{cv_scores.std()*2:.3f})")
-        
-        # Visualize CV distribution
-        fig, ax = plt.subplots(figsize=(8, 4))
-        sns.barplot(data=cv_df, x='Fold', y='CV Score', ax=ax, color='skyblue')
-        ax.axhline(y=cv_scores.mean(), color='red', linestyle='--', label=f'Mean: {cv_scores.mean():.3f}')
-        ax.fill_between(x=range(-1, len(cv_scores) + 1), 
-                    y1=cv_scores.mean() - cv_scores.std(),
-                    y2=cv_scores.mean() + cv_scores.std(),
-                    alpha=0.2, color='red', 
-                    label=f'Std Dev: {cv_scores.std():.3f}')
-        ax.set_ylim([max(0, cv_scores.min() - 0.1), min(1, cv_scores.max() + 0.1)])
-        ax.legend()
-        ax.set_title("Cross-validation Scores by Fold")
-        st.pyplot(fig)
+    st.subheader("Cross-validation Results")
+    
+    # More detailed CV reporting
+    cv_df = pd.DataFrame({
+        'Fold': range(1, len(cv_scores) + 1),
+        'CV Score': cv_scores
+    })
+    
+    # Display statistics with improved formatting
+    mean_score = cv_scores.mean()
+    std_score = cv_scores.std() * 2
+    st.markdown(f"<h4>Mean CV Score: <span style='color:#1E88E5'>{mean_score:.3f}</span> (±{std_score:.3f})</h4>", unsafe_allow_html=True)
+    
+    # Visualize CV distribution with enhanced styling
+    fig, ax = plt.subplots(figsize=(10, 5))
+    
+    # Custom color palette
+    bar_color = '#1E88E5'  # Vibrant blue
+    mean_line_color = '#E53935'  # Complementary red
+    std_area_color = '#FFE0E0'  # Light red for std dev area
+    
+    # Plot bars with improved style
+    bars = sns.barplot(data=cv_df, x='Fold', y='CV Score', ax=ax, color=bar_color)
+    
+    # Add value labels on top of bars
+    for i, bar in enumerate(bars.patches):
+        ax.text(bar.get_x() + bar.get_width()/2, 
+                bar.get_height() + 0.005, 
+                f'{cv_scores[i]:.3f}', 
+                ha='center', fontsize=10, color='#333333')
+    
+    # Enhanced mean line and std dev area
+    ax.axhline(y=mean_score, color=mean_line_color, linestyle='-', 
+               linewidth=2, label=f'Mean: {mean_score:.3f}')
+    ax.fill_between(x=range(-1, len(cv_scores) + 1), 
+                y1=mean_score - cv_scores.std(),
+                y2=mean_score + cv_scores.std(),
+                alpha=0.3, color=std_area_color, 
+                label=f'Std Dev: {cv_scores.std():.3f}')
+    
+    # Improved axis styling
+    ax.set_ylim([max(0, cv_scores.min() - 0.1), min(1, cv_scores.max() + 0.1)])
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    
+    # Enhanced legend and title
+    ax.legend(frameon=True, facecolor='white', framealpha=0.9, fontsize=10)
+    ax.set_title("Cross-validation Scores by Fold", fontsize=16, pad=15)
+    
+    # Adjust labels
+    ax.set_xlabel("Fold Number", fontsize=12)
+    ax.set_ylabel("CV Score", fontsize=12)
+    
+    plt.tight_layout()
+    st.pyplot(fig)
 
-def draw_perf(report):
+def draw_perf(report, key=None):
     st.subheader("Model Performance Metrics")
 
     metrics_df = pd.DataFrame({
@@ -212,7 +272,42 @@ def draw_perf(report):
             report['macro avg']['f1-score']
         ]
     })
-    st.dataframe(metrics_df.round(3))
+    
+    # Create a horizontal bar chart for metrics visualization
+    fig = px.bar(metrics_df, y='Metric', x='Score', orientation='h',
+                color='Score', color_continuous_scale='Viridis',
+                range_x=[0, 1])
+    
+    # Add value labels at the end of each bar
+    fig.update_traces(texttemplate='%{x:.3f}', textposition='outside')
+    
+    # Enhance layout
+    fig.update_layout(
+        title={
+            'text': 'Performance Metrics',
+            'font': {'size': 20, 'family': 'Arial'},
+            'y': 0.95
+        },
+        xaxis_title='Score',
+        yaxis_title=None,
+        xaxis=dict(tickfont=dict(size=12), showgrid=True, gridwidth=1, gridcolor='#EEEEEE'),
+        yaxis=dict(tickfont=dict(size=12)),
+        margin=dict(l=20, r=40, t=60, b=40),
+        height=300,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+    )
+    
+    if key:
+        st.plotly_chart(fig, use_container_width=True, key=key)
+    else:
+        st.plotly_chart(fig, use_container_width=True)
+
+    # Also show the dataframe with nicely formatted metrics
+    st.dataframe(metrics_df.style.format({'Score': '{:.3f}'})
+                .background_gradient(cmap='Blues', subset=['Score']), 
+                hide_index=True)
+
 
 def run_model(model):
     FEATURES = get_features()

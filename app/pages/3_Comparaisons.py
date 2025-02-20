@@ -5,37 +5,49 @@ import utils.training as train
 
 def main():
     models = train.get_models()
-
-    selected = st.selectbox("Graphiques", ["Matrice de confusion", "Rapport CV", "Performances"])
-    cols = st.columns(3)
-    alt_cols = st.columns(2)
-    i = 0
-    for key, model in models.items():
-        if selected == "Matrice de confusion":
+    
+    # Replace selectbox with tabs
+    tab1, tab2, tab3 = st.tabs(["Matrice de confusion", "Rapport CV", "Performances"])
+    
+    # Confusion Matrix Tab
+    with tab1:
+        cols = st.columns(3)
+        i = 0
+        for key, model in models.items():
             model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
             with cols[i%3]:
                 st.subheader(f"Matrice de confusion pour les valeurs par défaut de {key}")
                 conf_matrix_fig = train.plot_confusion_matrix(conf_matrix)
                 st.plotly_chart(conf_matrix_fig, use_container_width=True, key=f"confusion_matrix_{key}")
-        elif selected == "Rapport CV":
+            i += 1
+    
+    # CV Report Tab
+    with tab2:
+        alt_cols = st.columns(2)
+        i = 0
+        for key, model in models.items():
             model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
             with alt_cols[i%2]:
                 st.header(f"CVS pour {key}")
                 train.draw_cv(report, cv_scores)
-        elif selected == "Performances":
+            i += 1
+    
+    # Performance Tab
+    with tab3:
+        cols = st.columns(2)
+        i = 0
+        for key, model in models.items():
             model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
-            with cols[i%3]:
+            with cols[i%2]:
                 st.header(f"Perf metrics for {key}")
-                train.draw_perf(report)
-
-        i += 1
+                train.draw_perf(report, key=f"perf_{key}")
+            i += 1
 
 def render_no_dataset_skeleton():
     """Affiche un squelette de la page quand aucun dataset n'est chargé."""
     with st.container():
         # En-tête
         st.markdown("# Comparaison")
-
         # Skeleton pour le message d'erreur
         with st.container(border=True):
             # Utilisation des colonnes pour centrer le contenu
@@ -50,7 +62,6 @@ def render_no_dataset_skeleton():
 
 # Point d'entrée de la page
 dataset = DatasetState.get_dataset()
-
 if not dataset:
     render_no_dataset_skeleton()
 else:
