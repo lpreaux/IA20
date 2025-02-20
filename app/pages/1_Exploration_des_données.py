@@ -1,15 +1,16 @@
 import math
+
 import numpy as np
-import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import streamlit as st
 from plotly.subplots import make_subplots
 from scipy import stats
 from sklearn.preprocessing import StandardScaler, PowerTransformer
 
-from dataset.state import DatasetState
 from dataset.forms.config import dataset_config_form
+from dataset.state import DatasetState
 from utils.plotly import get_color_palette
 
 
