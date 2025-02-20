@@ -6,14 +6,27 @@ import utils.training as train
 def main():
     models = train.get_models()
 
+    selected = st.selectbox("Graphiques", ["Matrice de confusion", "Rapport CV", "Performances"])
     cols = st.columns(3)
+    alt_cols = st.columns(2)
     i = 0
     for key, model in models.items():
-        model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
-        with cols[i%3]:
-            st.subheader(f"Matrice de confusion pour les valeurs par défaut de {key}")
-            conf_matrix_fig = train.plot_confusion_matrix(conf_matrix)
-            st.plotly_chart(conf_matrix_fig, use_container_width=True)
+        if selected == "Matrice de confusion":
+            model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
+            with cols[i%3]:
+                st.subheader(f"Matrice de confusion pour les valeurs par défaut de {key}")
+                conf_matrix_fig = train.plot_confusion_matrix(conf_matrix)
+                st.plotly_chart(conf_matrix_fig, use_container_width=True, key=f"confusion_matrix_{key}")
+        elif selected == "Rapport CV":
+            model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
+            with alt_cols[i%2]:
+                st.header(f"CVS pour {key}")
+                train.draw_cv(report, cv_scores)
+        elif selected == "Performances":
+            model, y_pred, cv_scores, report, conf_matrix = train.train_and_evaluate_model(model)
+            with cols[i%3]:
+                st.header(f"Perf metrics for {key}")
+                train.draw_perf(report)
 
         i += 1
 

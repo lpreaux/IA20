@@ -173,25 +173,7 @@ def plot_confusion_matrix(conf_matrix):
     fig.update_layout(title='Confusion Matrix')
     return fig
 
-def run_model(model):
-    FEATURES = get_features()
-    model, y_pred, cv_scores, report, conf_matrix = train_and_evaluate_model(model)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Model Performance Metrics")
-
-        metrics_df = pd.DataFrame({
-            'Metric': ['Accuracy', 'Precision (macro)', 'Recall (macro)', 'F1-score (macro)'],
-            'Score': [
-                report['accuracy'],
-                report['macro avg']['precision'],
-                report['macro avg']['recall'],
-                report['macro avg']['f1-score']
-            ]
-        })
-        st.dataframe(metrics_df.round(3))
+def draw_cv(report, cv_scores):
         
         st.subheader("Cross-validation Results")
         
@@ -217,6 +199,30 @@ def run_model(model):
         ax.legend()
         ax.set_title("Cross-validation Scores by Fold")
         st.pyplot(fig)
+
+def draw_perf(report):
+    st.subheader("Model Performance Metrics")
+
+    metrics_df = pd.DataFrame({
+        'Metric': ['Accuracy', 'Precision (macro)', 'Recall (macro)', 'F1-score (macro)'],
+        'Score': [
+            report['accuracy'],
+            report['macro avg']['precision'],
+            report['macro avg']['recall'],
+            report['macro avg']['f1-score']
+        ]
+    })
+    st.dataframe(metrics_df.round(3))
+
+def run_model(model):
+    FEATURES = get_features()
+    model, y_pred, cv_scores, report, conf_matrix = train_and_evaluate_model(model)
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        draw_perf(report)
+        draw_cv(report, cv_scores)
         
     with col2:
         st.subheader("Matrice de confusion")
@@ -225,19 +231,23 @@ def run_model(model):
 
     if isinstance(model, tree.DecisionTreeClassifier):
         st.subheader("Visualisation de l'arbre de décision")
-        class_names = ['Amer', 'Équilibré', 'Sucré']
-        fig = plot_decision_tree(model, FEATURES, class_names)
+        conf = state.DatasetState.get_dataset()
+        target_col = conf.target_columns[0]
+        vals = conf.data[target_col].unique()
+        fig = plot_decision_tree(model, FEATURES, vals)
         st.pyplot(fig)
     
     elif isinstance(model, RandomForestClassifier):
         st.subheader("Visualisation d'échantillon d'arbres de la forêt")
-        class_names = ['Amer', 'Équilibré', 'Sucré']
+        conf = state.DatasetState.get_dataset()
+        target_col = conf.target_columns[0]
+        vals = conf.data[target_col].unique()
         
         # Add a slider to select how many trees to display
         num_trees_to_show = st.slider("Nombre d'arbres à afficher", 1, 
                                      min(6, model.n_estimators), 4)
         
-        forest_fig = plot_random_forest_trees(model, FEATURES, class_names, num_trees_to_show)
+        forest_fig = plot_random_forest_trees(model, FEATURES, vals, num_trees_to_show)
         st.pyplot(forest_fig)
     
     st.subheader("Détails des performances du modèle")

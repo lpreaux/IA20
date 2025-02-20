@@ -5,6 +5,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn import tree
+from dataset.state import DatasetState
+from dataset.forms.config import dataset_config_form
 import plotly.express as px
 import matplotlib.pyplot as plt
 import math
@@ -75,12 +77,12 @@ def open_modale(smn:str):
 
 def main():
     models = train.get_models()
-    st.title("🍷 Entrainement des modèles de classification du vin")
+    st.title("🍷 Entraînement des IAs")
     
     st.markdown("""
-    Cette page a pour but de vous permettre de choisir un modèle pour l'entrainer à prédire le type du vin en fonction de ses caractéristiques.
+    Cette page a pour but de vous permettre de choisir un modèle pour l'entrainer à prédire la target en fonction des paramètres.
 
-    Vous pouvez choisir différents modèles dans la barre de sélection à gauche
+    Vous pouvez choisir différents modèles dans la barre de sélection à gauche.
     """)
     
     # Sidebar
@@ -93,10 +95,6 @@ def main():
     
     model = models[selected_model_name]
     train.run_model(model)
-
-from dataset.state import DatasetState
-
-from dataset.forms.config import dataset_config_form
 
 dataset = DatasetState.get_dataset()
 
