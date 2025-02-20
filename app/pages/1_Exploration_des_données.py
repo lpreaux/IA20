@@ -1,5 +1,4 @@
 import math
-
 import numpy as np
 import streamlit as st
 import pandas as pd
@@ -9,270 +8,369 @@ from plotly.subplots import make_subplots
 from scipy import stats
 
 from dataset.state import DatasetState
-
 from dataset.forms.config import dataset_config_form
 
-dataset = DatasetState.get_dataset()
 
+def create_distribution_plot(data, features, target=None):
+    """Crée un plot de distribution pour chaque feature."""
+    n_cols = 3
+    n_rows = math.ceil(len(features) / n_cols)
 
-######
-# UI #
-######
-
-def render_no_dataset_skeleton():
-    """Affiche un squelette de la page quand aucun dataset n'est chargé."""
-    with st.container():
-        # En-tête
-        st.markdown("# Jeu de données")
-
-        # Skeleton pour le message d'erreur
-        with st.container(border=True):
-            # Utilisation des colonnes pour centrer le contenu
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.markdown("### :ghost: Aucun jeu de données")
-                st.caption("Chargez un jeu de données pour commencer l'analyse")
-                st.button("📤 Charger un jeu de données",
-                          type="primary",
-                          on_click=dataset_config_form,
-                          use_container_width=True)
-
-        # Skeleton pour le tableau
-        ## TODO
-
-
-def page():
-    df_raw = dataset.data
-
-    TARGET = dataset.target_columns[0]
-    FEATURES = dataset.features_columns
-
-    df_raw = (
-        df_raw
-        .assign(
-            target_num=lambda x: pd.Categorical(x[TARGET]).codes
-        )
-    )
-
-    df_target_sizes = (
-        df_raw
-        .groupby(TARGET)
-        .size()
-        .rename('count')
-    )
-
-    st.write("""
-    # Analyse Exploratoire des Données - Dataset Vin
-    """)
-
-    st.write("""
-    ___
-    ## 1. Premier aperçu des données
-
-    Examinons dans un premier temps les caractéristiques générales de notre dataset.py :
-    - Structure des données (types de variables, valeurs manquantes)
-    - Statistiques descriptives (moyenne, écart-type, quartiles, etc.)
-    """)
-
-    st.write("#### a. Informations générales")
-    st.table(df_raw.dtypes)
-
-    st.write("#### b. Statistiques descriptives")
-    printed_df = st.dataframe(df_raw.describe())
-
-    st.write("#### c. Échantillons concrets")
-    st.dataframe(df_raw.head(10))
-
-    st.write("""
-    ___
-    ## 2. Analyse de la Target
-
-    Maintenant, analysons la distribution de notre variable cible (target) pour évaluer l'équilibre des classes dans notre
-    dataset.py. Un déséquilibre important pourrait nécessiter des techniques de rééchantillonnage.
-    """)
-
-    st.write("#### a. Distribution des classes")
-    st.dataframe(df_target_sizes)
-    expand = st.expander("Barplot", icon=":material/bar_chart:")
-    expand.bar_chart(df_target_sizes)
-
-    st.write("#### b. Équilibre des classes")
-
-    st.write("""
-    ___
-    ## 3. Analyse des Features
-
-    Étudions de manière approfondie nos features :
-    1. Leur distribution
-    2. Leurs relations entre-elles
-    """)
-
-    st.write("### 4.1 Distribution des Variables")
-
-    st.write("#### a. Boîtes à moustaches (Vue d'ensemble)")
-    fig = px.box(df_raw[FEATURES], title="Boxplot élégant avec Plotly")
-    st.plotly_chart(fig)
-
-    # Calcul du nombre de lignes et colonnes
-    n_cols = 5
-    n_rows = math.ceil(len(FEATURES) / n_cols)
-
-    # Création des subplots
     fig = make_subplots(
         rows=n_rows,
         cols=n_cols,
-        subplot_titles=FEATURES,
-        horizontal_spacing=0.05,
+        subplot_titles=features,
+        horizontal_spacing=0.1,
         vertical_spacing=0.1
     )
 
-    # Pour chaque feature, créer une ligne KDE
-    for i, col in enumerate(FEATURES):
+    for i, col in enumerate(features):
         row = i // n_cols + 1
         col_pos = i % n_cols + 1
 
-        # Conversion explicite en float64 standard et suppression des valeurs NA
-        data = df_raw[col]
-
-        # Calcul du KDE
-        try:
-            kde = stats.gaussian_kde(data.tolist())
-            x_range = np.linspace(data.min(), data.max(), 200)
-            y_kde = kde(x_range)
-
-            # Ajout de la ligne
-            fig.add_trace(
-                go.Scatter(
-                    x=x_range,
-                    y=y_kde,
-                    mode='lines',
-                    name=col,
-                    line=dict(color='#1f77b4'),
-                    showlegend=False
-                ),
-                row=row,
-                col=col_pos
-            )
-        except Exception as e:
-            st.warning(f"Impossible de créer le KDE pour la colonne {col}: {str(e)}")
-            continue
-
-    # Mise à jour du layout
-    fig.update_layout(
-        height=400 * n_rows,
-        width=1000,
-        showlegend=False,
-        title_text="Distribution des features",
-        template="plotly_dark",
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
-    )
-
-    # Mise à jour des axes
-    fig.update_xaxes(title_text="Valeur", showgrid=True, gridwidth=1, gridcolor='rgba(128,128,128,0.2)')
-    fig.update_yaxes(title_text="Densité", showgrid=True, gridwidth=1, gridcolor='rgba(128,128,128,0.2)')
-
-    # Pour l'utiliser dans Streamlit
-    st.plotly_chart(fig, use_container_width=True)
-
-    #####
-    # Calcul du nombre de lignes et colonnes
-    n_cols = 5
-    n_rows = math.ceil(len(FEATURES) / n_cols)
-
-    # Création des subplots
-    fig = make_subplots(
-        rows=n_rows,
-        cols=n_cols,
-        subplot_titles=FEATURES,
-        horizontal_spacing=0.05,
-        vertical_spacing=0.1
-    )
-
-    # Génération d'une palette de couleurs en fonction du nombre de classes
-    unique_targets = sorted(df_raw[TARGET].unique())
-    n_classes = len(unique_targets)
-
-    # Création d'une palette de couleurs
-    colors = [
-        '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',
-        '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf'
-    ]
-    # Si on a besoin de plus de couleurs, on peut répéter la palette
-    while len(colors) < n_classes:
-        colors.extend(colors)
-    colors = colors[:n_classes]
-
-    # Pour chaque feature, créer des lignes KDE pour chaque classe
-    for i, col in enumerate(FEATURES):
-        row = i // n_cols + 1
-        col_pos = i % n_cols + 1
-
-        # Pour chaque classe
-        for idx, target_class in enumerate(unique_targets):
-            # Filtrer les données pour la classe actuelle
-            data = df_raw[df_raw[TARGET] == target_class][col]
-
+        if target is not None:
+            # Distribution par classe
+            for target_class in data[target].unique():
+                subset = data[data[target] == target_class][col]
+                try:
+                    kde = stats.gaussian_kde(subset)
+                    x_range = np.linspace(subset.min(), subset.max(), 200)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x_range,
+                            y=kde(x_range),
+                            name=f"{target_class}",
+                            showlegend=(i == 0),
+                            line=dict(width=2)
+                        ),
+                        row=row,
+                        col=col_pos
+                    )
+                except Exception:
+                    continue
+        else:
+            # Distribution globale
             try:
-                # Calcul du KDE
-                kde = stats.gaussian_kde(data.tolist())
-                x_range = np.linspace(data.min(), data.max(), 200)
-                y_kde = kde(x_range)
-
-                # Ajout de la ligne
+                kde = stats.gaussian_kde(data[col])
+                x_range = np.linspace(data[col].min(), data[col].max(), 200)
                 fig.add_trace(
                     go.Scatter(
                         x=x_range,
-                        y=y_kde,
-                        mode='lines',
-                        name=f'Classe {target_class}',
-                        line=dict(color=colors[idx]),
-                        showlegend=True if i == 0 else False  # Légende uniquement pour le premier plot
+                        y=kde(x_range),
+                        showlegend=False,
+                        line=dict(color='#1f77b4', width=2)
                     ),
                     row=row,
                     col=col_pos
                 )
-            except Exception as e:
-                st.warning(f"Impossible de créer le KDE pour la colonne {col}, classe {target_class}: {str(e)}")
+            except Exception:
                 continue
 
-    # Mise à jour du layout
     fig.update_layout(
-        height=400 * n_rows,
-        width=1000,
-        title_text="Distribution des features par classe",
+        height=300 * n_rows,
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        showlegend=True,
+        plot_bgcolor='rgba(0,0,0,0.05)',
+        font=dict(family="sans-serif"),
+        showlegend=target is not None,
         legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="right",
-            x=0.99,
             bgcolor='rgba(0,0,0,0.5)',
             bordercolor='rgba(255,255,255,0.2)',
             borderwidth=1
         )
     )
 
-    # Mise à jour des axes
-    fig.update_xaxes(
-        title_text="Valeur",
-        showgrid=True,
-        gridwidth=1,
-        gridcolor='rgba(128,128,128,0.2)'
-    )
-    fig.update_yaxes(
-        title_text="Densité",
-        showgrid=True,
-        gridwidth=1,
-        gridcolor='rgba(128,128,128,0.2)'
+    return fig
+
+
+def create_correlation_heatmap(data, features):
+    """Crée une heatmap de corrélation."""
+    corr_matrix = data[features].corr()
+
+    mask = np.zeros_like(corr_matrix, dtype=bool)
+    mask[np.triu_indices_from(mask)] = True
+    corr_matrix_masked = corr_matrix.copy()
+    corr_matrix_masked[mask] = np.nan
+
+    heat_map_text = np.round(corr_matrix_masked, 2)
+    heat_map_text[mask] = ""
+
+    fig = go.Figure(data=go.Heatmap(
+        z=corr_matrix_masked,
+        x=features,
+        y=features,
+        text=heat_map_text,
+        texttemplate='%{text}',
+        textfont={"size": 10},
+        hoverongaps=False,
+        colorscale='RdBu_r',
+        zmid=0,
+        zmin=-1,
+        zmax=1
+    ))
+
+    fig.update_layout(
+        title='Matrice de Corrélation',
+        height=600,
+        template="plotly_dark",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0.05)'
     )
 
-    # Affichage dans Streamlit
-    st.plotly_chart(fig, use_container_width=True)
+    return fig
 
+
+def page():
+    """Rendu principal de la page d'exploration."""
+    dataset = DatasetState.get_dataset()
+    df = dataset.data
+
+    # En-tête
+    st.markdown("""
+        # 📊 Analyse Exploratoire des Données
+
+        Explorez et comprenez votre jeu de données à travers différentes visualisations interactives.
+        Utilisez les filtres dans la barre latérale pour personnaliser votre analyse.
+    """)
+
+    # Métriques principales
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(
+            "Observations",
+            len(df),
+            help="Nombre total de lignes dans le dataset"
+        )
+    with col2:
+        st.metric(
+            "Features",
+            len(dataset.features_columns),
+            help="Nombre de variables explicatives"
+        )
+    with col3:
+        st.metric(
+            "Target(s)",
+            len(dataset.target_columns),
+            help="Nombre de variables cibles"
+        )
+    with col4:
+        if len(dataset.target_columns) > 0:
+            st.metric(
+                "Classes",
+                len(df[dataset.target_columns[0]].unique()),
+                help="Nombre de classes uniques dans la target principale"
+            )
+
+    # Onglets principaux
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📋 Vue d'ensemble",
+        "📊 Distributions",
+        "🔗 Corrélations",
+        "🎯 Pairplot"
+    ])
+
+    with tab1:
+        st.markdown("### Structure des données")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("#### Types des variables")
+            st.dataframe(
+                pd.DataFrame({
+                    "Type": df.dtypes,
+                    "Non-nulls": df.count(),
+                    "Nulls (%)": (df.isna().sum() / len(df) * 100).round(2)
+                }),
+                use_container_width=True
+            )
+
+        with col2:
+            st.markdown("#### Statistiques descriptives")
+            st.dataframe(
+                df.describe().round(2),
+                use_container_width=True
+            )
+
+        st.markdown("#### Aperçu des données")
+        st.dataframe(df.head())
+
+    with tab2:
+        # Filtres pour la distribution
+        selected_features = st.multiselect(
+            "Sélectionner les variables à analyser",
+            options=dataset.features_columns,
+            default=dataset.features_columns[:6]
+        )
+
+        if len(selected_features) > 0:
+            # Distribution univariée
+            st.markdown("### 📈 Distributions univariées")
+            fig_dist = create_distribution_plot(df, selected_features)
+            st.plotly_chart(fig_dist, use_container_width=True)
+
+            # Distribution par target si disponible
+            if len(dataset.target_columns) > 0:
+                st.markdown("### 🎯 Distributions par classe")
+                fig_dist_target = create_distribution_plot(
+                    df,
+                    selected_features,
+                    dataset.target_columns[0]
+                )
+                st.plotly_chart(fig_dist_target, use_container_width=True)
+
+    with tab3:
+        if len(dataset.features_columns) > 1:
+            st.markdown("### 🔗 Analyse des corrélations")
+
+            # Sélection des features pour la corrélation
+            corr_features = st.multiselect(
+                "Sélectionner les variables pour la matrice de corrélation",
+                options=dataset.features_columns,
+                default=dataset.features_columns[:8]
+            )
+
+            if len(corr_features) > 1:
+                fig_corr = create_correlation_heatmap(df, corr_features)
+                st.plotly_chart(fig_corr, use_container_width=True)
+            else:
+                st.info("Sélectionnez au moins 2 variables pour voir leurs corrélations")
+        else:
+            st.info("Il faut au moins 2 variables pour analyser les corrélations")
+
+    with tab4:
+        st.markdown("### 🎯 Scatter Matrix")
+
+        # Sélection des features pour le pairplot
+        pair_features = st.multiselect(
+            "Sélectionner les variables pour la matrice de visualisation (max 6 recommandé)",
+            options=dataset.features_columns,
+            default=dataset.features_columns[:4],
+            key="pairplot_features"
+        )
+
+        if len(pair_features) > 1:
+            # Création du scatter matrix
+            fig = px.scatter_matrix(
+                df,
+                dimensions=pair_features,
+                color=dataset.target_columns[0] if dataset.target_columns else None,
+                title="Matrice de visualisation des relations entre variables",
+                labels={col: col.replace('_', ' ').title() for col in pair_features}
+            )
+
+            # Personnalisation du graphique
+            fig.update_traces(
+                diagonal_visible=False,
+                showupperhalf=False,
+                hovertemplate='%{xaxis.title.text}: %{x}<br>%{yaxis.title.text}: %{y}<br>'
+            )
+
+            # Mise en page
+            fig.update_layout(
+                height=800,
+                width=800,
+                template="plotly_dark",
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0.05)',
+                title_x=0.5,
+            )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            if len(pair_features) > 6:
+                st.warning(
+                    "⚠️ Un grand nombre de variables peut rendre le graphique difficile à interpréter. Considérez de réduire la sélection à 6 variables maximum pour une meilleure lisibilité.")
+        else:
+            st.info("Sélectionnez au moins 2 variables pour visualiser leurs relations")
+
+
+def render_no_dataset_skeleton():
+    """Affiche un squelette visuel de la page quand aucun dataset n'est chargé."""
+    # En-tête
+    st.markdown("# 📊 Analyse Exploratoire des Données")
+    st.markdown("""
+        Explorez et comprenez votre jeu de données à travers différentes visualisations interactives.
+        Utilisez les filtres dans la barre latérale pour personnaliser votre analyse.
+    """)
+
+    # Message principal pour charger un dataset
+    with st.container(border=True):
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("### :ghost: Aucun jeu de données")
+            st.caption("Chargez un jeu de données pour commencer l'exploration")
+            st.button(
+                "📤 Charger un jeu de données",
+                type="primary",
+                on_click=dataset_config_form,
+                use_container_width=True
+            )
+
+    # Métriques placeholder
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Observations", "---")
+    with col2:
+        st.metric("Features", "---")
+    with col3:
+        st.metric("Target(s)", "---")
+    with col4:
+        st.metric("Classes", "---")
+
+    # Onglets placeholder
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "📋 Vue d'ensemble",
+        "📊 Distributions",
+        "🔗 Corrélations",
+        "🎯 Pairplot"
+    ])
+
+    with tab1:
+        st.markdown("### Structure des données")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("#### Types des variables")
+            placeholder_df = pd.DataFrame({
+                "Type": ["---"],
+                "Non-nulls": ["---"],
+                "Nulls (%)": ["---"]
+            })
+            st.dataframe(placeholder_df, use_container_width=True)
+
+        with col2:
+            st.markdown("#### Statistiques descriptives")
+            st.dataframe(pd.DataFrame({"": ["---"]}), use_container_width=True)
+
+        st.markdown("#### Aperçu des données")
+        st.dataframe(pd.DataFrame({"": ["---"]}), use_container_width=True)
+
+    with tab2:
+        st.markdown("### 📈 Distributions")
+        st.info("Les distributions des variables seront affichées ici une fois un dataset chargé.")
+        # Placeholder pour le graphique
+        with st.container(border=True, height=300):
+            st.markdown("#### Graphique de distribution")
+            st.caption("Chargez un dataset pour visualiser les distributions")
+
+    with tab3:
+        st.markdown("### 🔗 Corrélations")
+        st.info("La matrice de corrélation sera affichée ici une fois un dataset chargé.")
+        # Placeholder pour la heatmap
+        with st.container(border=True, height=300):
+            st.markdown("#### Matrice de corrélation")
+            st.caption("Chargez un dataset pour visualiser les corrélations")
+
+    with tab4:
+        st.markdown("### 🎯 Scatter Matrix")
+        st.info("La matrice de visualisation sera affichée ici une fois un dataset chargé.")
+        # Placeholder pour le scatter matrix
+        with st.container(border=True, height=300):
+            st.markdown("#### Matrice de visualisation")
+            st.caption("Chargez un dataset pour visualiser les relations entre variables")
+
+
+dataset = DatasetState.get_dataset()
 
 if not dataset:
     render_no_dataset_skeleton()
